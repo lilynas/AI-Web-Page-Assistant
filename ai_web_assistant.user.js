@@ -559,29 +559,6 @@
             }
         });
 
-        // Auto-hide FAB Logic
-        function resetFabAutoHide() {
-            if (DOM.fab.classList.contains('auto-hide')) {
-                DOM.fab.classList.remove('auto-hide');
-            }
-            clearTimeout(fabHideTimeout);
-            if (!isPanelOpen) {
-                fabHideTimeout = setTimeout(() => {
-                    // Don't auto-hide if dragging or hovering
-                    if (!isPanelOpen && !DOM.fab.matches(':hover')) {
-                        DOM.fab.classList.add('auto-hide');
-                    }
-                }, 3000);
-            }
-        }
-
-        // Track activity to reset the auto-hide timer
-        document.addEventListener('mousemove', resetFabAutoHide);
-        document.addEventListener('scroll', resetFabAutoHide, { passive: true });
-        document.addEventListener('touchstart', resetFabAutoHide, { passive: true });
-        // Initial setup
-        resetFabAutoHide();
-
         // Toggle Settings
         DOM.btnSettings.addEventListener('click', () => switchView('settings'));
         DOM.btnBack.addEventListener('click', () => switchView('chat'));
@@ -636,7 +613,7 @@
         if (isPanelOpen) {
             DOM.panel.classList.add('open');
             DOM.fab.style.display = 'none';
-            clearTimeout(fabHideTimeout);
+            resetFabAutoHide(); // clear the timeout so it doesn't hide when closed
             if (!isSettingsOpen) {
                 setTimeout(() => DOM.chatTextarea.focus(), 300);
             }
@@ -644,7 +621,7 @@
             DOM.panel.classList.remove('open');
             setTimeout(() => {
                 DOM.fab.style.display = 'flex';
-                resetFabAutoHide(); // Restart hide timer when closed
+                startFabAutoHide(); // Restart hide timer when closed
             }, 300);
         }
     }
@@ -667,10 +644,54 @@
         }
     }
 
+    function switchView(view) {
+        isSettingsOpen = view === 'settings';
+        if (isSettingsOpen) {
+            DOM.chatView.style.display = 'none';
+            DOM.settingsView.style.display = 'flex';
+            DOM.btnSettings.style.display = 'none';
+            DOM.btnBack.style.display = 'flex';
+            DOM.title.textContent = '设置';
+            populateSettings(); // Refresh before showing
+        } else {
+            DOM.settingsView.style.display = 'none';
+            DOM.chatView.style.display = 'flex';
+            DOM.btnBack.style.display = 'none';
+            DOM.btnSettings.style.display = 'flex';
+            DOM.title.textContent = 'AI 网页总结助手';
+        }
+    }
+
+    // Auto-hide FAB Logic
+    function resetFabAutoHide() {
+        DOM.fab.classList.remove('auto-hide');
+        clearTimeout(fabHideTimeout);
+    }
+
+    function startFabAutoHide() {
+        clearTimeout(fabHideTimeout);
+        if (!isPanelOpen) {
+            fabHideTimeout = setTimeout(() => {
+                if (!isPanelOpen && !DOM.fab.matches(':hover')) {
+                    DOM.fab.classList.add('auto-hide');
+                }
+            }, 3000);
+        }
+    }
+
     // Draggable FAB Logic
     function makeDraggable(el) {
         let isDragging = false;
         let startX, startY, initialX, initialY;
+
+        // localized hover listeners for auto-hide
+        el.addEventListener('mouseenter', resetFabAutoHide);
+        el.addEventListener('mouseleave', startFabAutoHide);
+        el.addEventListener('touchstart', resetFabAutoHide, { passive: true });
+        el.addEventListener('touchend', startFabAutoHide, { passive: true });
+
+        // Initial auto-hide start
+        startFabAutoHide();
 
         el.addEventListener('mousedown', dragStart);
         el.addEventListener('touchstart', dragStart, { passive: false });
