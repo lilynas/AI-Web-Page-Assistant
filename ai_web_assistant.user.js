@@ -142,6 +142,35 @@
             #ai-panel.open {
                 transform: translateY(0);
             }
+            
+            /* Mobile Follow-ups Menu */
+            #ai-follow-ups {
+                display: none !important; /* Overriden by .show */
+                position: absolute;
+                bottom: 100px;
+                right: 16px;
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(8px);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+                border-radius: 12px;
+                padding: 12px !important;
+                flex-direction: column;
+                z-index: 100;
+                border: 1px solid #e2e8f0;
+                max-width: 80%;
+                animation: slideUp 0.2s ease-out;
+            }
+            #ai-follow-ups.show {
+                display: flex !important;
+            }
+            #ai-btn-followup-toggle {
+                display: flex !important;
+            }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         /* Header */
@@ -431,6 +460,9 @@
                                 <div style="display:flex; gap:8px; align-items:center;">
                                     <select id="ai-assistant-select" class="ai-select" style="max-width: 120px; padding: 6px; font-size:12px; height:32px;"></select>
                                     <button id="ai-btn-summarize" class="ai-btn ai-btn-secondary" style="padding: 0 12px; height:32px; font-size: 12px; white-space: nowrap;" title="一键总结网页正文">✨ 一键总结</button>
+                                    <button id="ai-btn-followup-toggle" class="ai-btn ai-btn-secondary" style="display:none; position:relative; padding: 0 10px; height:32px; font-size: 14px;" title="追问菜单">
+                                        💡<span id="ai-followup-badge" style="display:none; position:absolute; top:-2px; right:-2px; width:8px; height:8px; background:#ef4444; border-radius:50%;"></span>
+                                    </button>
                                 </div>
                                 <div style="display:flex; gap:8px; align-items:flex-end;">
                                     <textarea id="ai-chat-textarea" placeholder="输入你想问的问题..." rows="1"></textarea>
@@ -515,6 +547,8 @@
         DOM.chatSend = document.getElementById('ai-chat-send');
         DOM.assistantSelect = document.getElementById('ai-assistant-select');
         DOM.btnSummarize = document.getElementById('ai-btn-summarize');
+        DOM.btnFollowupToggle = document.getElementById('ai-btn-followup-toggle');
+        DOM.followupBadge = document.getElementById('ai-followup-badge');
         DOM.followUps = document.getElementById('ai-follow-ups');
 
         // Settings Inputs
@@ -592,11 +626,25 @@
         });
 
         // Chat Actions
-        DOM.btnSummarize.addEventListener('click', handleSummarizeClick);
-        DOM.chatSend.addEventListener('click', handleSendChat);
+        DOM.btnFollowupToggle.addEventListener('click', () => {
+            DOM.followupBadge.style.display = 'none';
+            DOM.followUps.classList.toggle('show');
+        });
+
+        DOM.btnSummarize.addEventListener('click', () => {
+            DOM.followUps.classList.remove('show');
+            handleSummarizeClick();
+        });
+
+        DOM.chatSend.addEventListener('click', () => {
+            DOM.followUps.classList.remove('show');
+            handleSendChat();
+        });
+
         DOM.chatTextarea.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
+                DOM.followUps.classList.remove('show');
                 handleSendChat();
             }
         });
@@ -1231,6 +1279,11 @@
 
                             DOM.followUps.innerHTML = '';
                             if (questions.length > 0) {
+                                // Show badge on mobile
+                                if (window.innerWidth <= 768) {
+                                    DOM.followupBadge.style.display = 'block';
+                                }
+
                                 questions.forEach(q => {
                                     const btn = document.createElement('button');
                                     btn.className = 'ai-follow-up-chip';
@@ -1238,6 +1291,7 @@
                                     btn.title = q;
                                     btn.onclick = () => {
                                         DOM.chatTextarea.value = q;
+                                        DOM.followUps.classList.remove('show');
                                         handleSendChat();
                                     };
                                     DOM.followUps.appendChild(btn);
