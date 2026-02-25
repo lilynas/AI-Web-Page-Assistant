@@ -971,23 +971,37 @@
     function getPageContent() {
         if (pageContentCache) return pageContentCache;
 
+        let contentText = "";
         try {
             // Clone document to not mess with the live DOM during parsing
             let documentClone = document.cloneNode(true);
             let article = new Readability(documentClone).parse();
 
-            // Fallback to innerText if readability fails or returns empty
-            let contentText = article && article.textContent ? article.textContent.trim() : document.body.innerText.trim();
-
-            // Clean up excess whitespace
-            contentText = contentText.replace(/\n\s*\n/g, '\n\n');
-
-            pageContentCache = contentText;
-            return contentText;
+            if (article && article.textContent && article.textContent.trim().length > 200) {
+                contentText = article.textContent.trim();
+            } else {
+                throw new Error("Readability extracted too little content or failed.");
+            }
         } catch (e) {
-            console.warn("Readability failed, falling back to innerText", e);
-            return document.body.innerText.substring(0, 10000); // safety limit
+            console.warn("Readability fallback triggered:", e);
+            // Fallback 1: Look for main content container (common in modern web apps and GitHub)
+            const mainContainer = document.querySelector('main, .markdown-body, article, #content, .content');
+            if (mainContainer) {
+                contentText = mainContainer.innerText.trim();
+            } else {
+                // Fallback 2: Grab the whole body innerText as a last resort
+                contentText = document.body.innerText.trim();
+            }
         }
+
+        // Clean up excess whitespace and limit length to avoid token limits (e.g. max ~20,000 chars)
+        contentText = contentText.replace(/\n\s*\n/g, '\n\n');
+        if (contentText.length > 20000) {
+            contentText = contentText.substring(0, 20000) + "\n...[Content truncated due to length]...";
+        }
+
+        pageContentCache = contentText;
+        return contentText;
     }
 
     // ==========================================
